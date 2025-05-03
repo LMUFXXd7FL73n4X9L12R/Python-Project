@@ -123,7 +123,7 @@ def login():
 
 # Get access token using refresh token
 @bp.route("/auth/refresh", methods=["POST"])
-@jwt_required()
+@jwt_required(refresh=True)
 def refresh():
     """Endpoint to refresh token using refresh token in request header"""
     try:
@@ -167,6 +167,7 @@ def get_profile():
 
 
 @bp.route("/auth/verify", methods=["POST"])
+@jwt_required()
 def verify_token():
     """Verify if a token is valid and not expired"""
     return jsonify({"message": "Token is valid", "verified": True})
@@ -201,6 +202,38 @@ def change_password():
     db.session.commit()
 
     return jsonify({"message": "Password changed successfully"})
+
+
+@bp.route("/auth/user/<int:user_id>", methods=["DELETE"])
+@jwt_required()
+def delete_user(user_id):
+    """Delete a user by ID (Admin-only)"""
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    if not user or user.role != "admin":
+        return error_response("Role admin required", 403)
+
+    user_to_delete = User.query.get(user_id)
+    if not user_to_delete:
+        return error_response("User not found", 404)
+
+    db.session.delete(user_to_delete)
+    db.session.commit()
+    return jsonify({"message": "User deleted successfully"})
+
+
+@bp.route("/auth/users", methods=["GET"])
+@jwt_required()
+def get_all_users():
+    """Retrieve a list of all users (Admin-only)"""
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    if not user or user.role != "admin":
+        return error_response("Role admin required", 403)
+
+    users = User.query.all()
+    users_data = [u.to_dict() for u in users]
+    return jsonify(users_data), 200
 
 
 def validate_password_complexity(password):
