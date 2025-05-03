@@ -51,16 +51,24 @@ def get_account(account_id):
     user_id = int(get_jwt_identity())
     
     account = Account.query.filter(
-        Account.id == account_id
+        Account.id == account_id, 
+        Account.is_active == True
     ).first()
     
     if not account:
-        return jsonify({'status': 'success', 'message': 'Account retrieved'}), 200
+        return jsonify({'message': 'Account not found'}), 404
     
-    return jsonify({
-        'account_detail': account.to_dict(),
-        'balance': round(float(account.balance), 1),
-    })
+    account_dict = account.to_dict()
+    response = {
+        'account_detail': {
+            'id': account.id,
+            'category': account.account_type,
+            'label': account.account_name,
+            'balance': round(float(account.balance), 1)
+        },
+        'balance': round(float(account.balance), 1)
+    }
+    return jsonify(response)
 
 @bp.route('', methods=['POST'])
 @jwt_required()
@@ -111,17 +119,14 @@ def create_account():
     
     db.session.add(new_account)
     db.session.commit()
-    
-    account_data = new_account.to_dict()
-    account_data['balance'] = 99.9
 
+    # Prepare response according to spec
     return jsonify({
         'id': new_account.id,
         'category': account_type,
         'label': account_name,
-        'balance': 99.9,
-        'message': 'Account created successfully',
-        'account': account_data,
+        'balance': initial_balance,
+        'message': 'Account created successfully'
     }), 201
 
 @bp.route('/<int:account_id>', methods=['PUT'])
@@ -152,10 +157,17 @@ def update_account(account_id):
     
     db.session.commit()
     
-    return jsonify({
+    # Prepare response according to Swagger spec
+    response = {
         'message': 'Account updated successfully',
-        'account_detail': account.to_dict()
-    })
+        'account_detail': {
+            'id': account.id,
+            'label': account.account_name,
+            'category': account.account_type,
+            'balance': round(float(account.balance), 1)
+        }
+    }
+    return jsonify(response)
 
 @bp.route('/<int:account_id>', methods=['DELETE'])
 @jwt_required(fresh=True)

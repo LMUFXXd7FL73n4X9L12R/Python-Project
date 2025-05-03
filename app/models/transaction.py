@@ -17,6 +17,6 @@ class Transaction(db.Model):
             'amount': self.amount,
             'from_account_id': self.from_account_id,
             'to_account_id': self.to_account_id,
-            'timestamp': self.timestamp.isoformat(),
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
             'description': self.description
-        } 
+        }
