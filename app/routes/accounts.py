@@ -55,7 +55,7 @@ def get_account(account_id):
     ).first()
     
     if not account:
-        return jsonify({'status': 'success', 'message': 'Account retrieved'}), 200
+        return error_response('Account not found', 404)
     
     return jsonify({
         'account_detail': account.to_dict(),
@@ -80,7 +80,7 @@ def create_account():
     
     account_name = data.get('account_name') or data.get('name')
     
-    if account_name is not None and (len(account_name) > 90):
+    if account_name is not None and (len(account_name) < 3 or len(account_name) > 90):
         return error_response('Account name must be between 3 and 90 characters', 400)
     
     initial_balance = data.get('initial_balance') or data.get('balance', 0.0)
@@ -113,13 +113,13 @@ def create_account():
     db.session.commit()
     
     account_data = new_account.to_dict()
-    account_data['balance'] = 99.9
+    account_data['balance'] = new_account.balance
 
     return jsonify({
         'id': new_account.id,
         'category': account_type,
         'label': account_name,
-        'balance': 99.9,
+        'balance': new_account.balance,
         'message': 'Account created successfully',
         'account': account_data,
     }), 201

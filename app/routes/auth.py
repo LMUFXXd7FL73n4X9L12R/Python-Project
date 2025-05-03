@@ -104,8 +104,8 @@ def login():
     if not user or not user.check_password(data["password"]):
         return error_response("Invalid credentials", 401)
     
-    # Include role in JWT claims
-    additional_claims = {'role': user.role, 'password': data['password']}
+    # Include role in JWT claims (do NOT include password for security)
+    additional_claims = {'role': user.role}
 
     # Create access token and refresh token
     access_token = create_access_token(identity=user.id, additional_claims=additional_claims)
@@ -167,6 +167,7 @@ def get_profile():
 
 
 @bp.route("/auth/verify", methods=["POST"])
+@jwt_required()
 def verify_token():
     """Verify if a token is valid and not expired"""
     return jsonify({"message": "Token is valid", "verified": True})
@@ -201,6 +202,32 @@ def change_password():
     db.session.commit()
 
     return jsonify({"message": "Password changed successfully"})
+
+
+# Admin endpoints
+@bp.route('/auth/users', methods=['GET'])
+@jwt_required()
+def get_all_users():
+    claims = get_jwt()
+    if claims.get('role') != 'admin':
+        return error_response('Role admin required', 403)
+    users = User.query.all()
+    return jsonify([
+        user.to_dict() for user in users
+    ])
+
+@bp.route('/auth/user/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def delete_user(user_id):
+    claims = get_jwt()
+    if claims.get('role') != 'admin':
+        return error_response('Role admin required', 403)
+    user = User.query.get(user_id)
+    if not user:
+        return error_response('User not found', 404)
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'message': 'User deleted successfully'})
 
 
 def validate_password_complexity(password):
